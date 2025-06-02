@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma-app/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  name     String?
+  password String?
+  provider Provider @default(CREDENTIALS)
+
+  character Character?
+}
+
+// Character Model
+model Character {
+  id              Int            @id @default(autoincrement())
+  name            String
+  level           Int            @default(1)
+  experience      Int            @default(0)
+  strength        Int
+  intelligence    Int
+  endurance       Int
+  availablePoints Int            @default(0)
+  maxLevelReached Int            @default(1)
+  maxExpNeeded    Int            @default(100)
+  class           CharacterClass @default(WARRIOR)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  userId          Int            @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills          Skill[]
+  inventory       Item[]
+  quests          Quest[]
+}
+
+// Skill Model
+model Skill {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String
+  level       Int    @default(1)
+  maxLevel    Int
+
+  // Reference to character
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+// Item Model
+model Item {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  quantity    Int        @default(1)
+  status      ItemStatus @default(PENDING)
+
+  // Foreign key to Character
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  // Optional foreign key to Quest (as reward)
+  rewardFromQuestId Int?
+  rewardFromQuest   Quest? @relation("RewardItems", fields: [rewardFromQuestId], references: [id], onDelete: SetNull)
+}
+
+// Quest Model
+model Quest {
+  id            Int         @id @default(autoincrement())
+  title         String
+  description   String?
+  difficulty    Difficulty
+  reward        String
+  progress      Int         @default(0)
+  status        QuestStatus @default(AVAILABLE)
+  completedDate DateTime?
+  failedDate    DateTime?
+  reason        String?
+
+  // Reference to the character who holds the quest
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  // Reward Items (1 to many)
+  itemsRewarded Item[] @relation("RewardItems")
+}
+
+enum CharacterClass {
+  WARRIOR
+  MAGE
+  ROGUE
+}
+
+enum QuestStatus {
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ItemStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum Difficulty {
+  E
+  D
+  C
+  B
+  A
+}
+
+enum Provider {
+  CREDENTIALS
+  GITHUB
+}
