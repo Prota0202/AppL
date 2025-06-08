@@ -164,7 +164,6 @@ export const useQuests = () => {
 };
 
 // Hook pour les skills
-// Hook pour les skills
 export const useSkills = () => {
   const [skills, setSkills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,5 +224,44 @@ export const useSkills = () => {
     refreshSkills: loadSkills,
     upgradeSkill,
     removeSkill,
+  };
+};
+
+// Hook pour l'inventaire
+export const useInventory = () => {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
+
+  const loadInventory = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const data = await apiService.getInventory();
+      setItems(data);
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    loadInventory();
+  }, [loadInventory]);
+
+  return {
+    items,
+    loading,
+    error,
+    refreshInventory: loadInventory,
   };
 };
