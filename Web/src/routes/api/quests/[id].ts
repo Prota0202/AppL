@@ -1,4 +1,3 @@
-// src/routes/api/quests/[id].ts
 import { json } from "@solidjs/router";
 import { APIEvent } from "@solidjs/start/server";
 import jwt from "jsonwebtoken";
