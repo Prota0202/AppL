@@ -1,12 +1,4 @@
-import {
-  CharacterClass,
-  Character as CharacterType,
-  User,
-  Skill as SkillType,
-  QuestStatus as QuestStatusType,
-  Quest as QuestType,
-  Item as ItemType
-} from '@prisma-app/client';
+import {CharacterClass,Character as CharacterType,User,Skill as SkillType,QuestStatus as QuestStatusType,Quest as QuestType,Item as ItemType} from '@prisma-app/client';
 
 export interface CharacterSidebar {
   userName: string;
