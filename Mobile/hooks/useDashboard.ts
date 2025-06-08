@@ -7,6 +7,7 @@ interface UseDashboardReturn {
   character: CharacterDashboard | null;
   loading: boolean;
   error: string | null;
+  needsCharacterCreation: boolean;
   refreshData: () => Promise<void>;
   updateAttributes: (attributes: any) => Promise<void>;
 }
@@ -15,7 +16,8 @@ export const useDashboard = (): UseDashboardReturn => {
   const [character, setCharacter] = useState<CharacterDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, user } = useAuth();
+  const [needsCharacterCreation, setNeedsCharacterCreation] = useState(false);
+  const { isAuthenticated, user, hasCharacter, setHasCharacter } = useAuth();
 
   const loadCharacterData = useCallback(async () => {
     if (!isAuthenticated) {
@@ -24,20 +26,42 @@ export const useDashboard = (): UseDashboardReturn => {
       return;
     }
 
+    // Si on sait déjà qu'il n'y a pas de personnage, pas besoin d'appeler l'API
+    if (hasCharacter === false) {
+      setNeedsCharacterCreation(true);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+      setNeedsCharacterCreation(false);
       
       const data = await apiService.getCharacterDashboard();
       setCharacter(data);
-    } catch (error) {
+      
+      // Mettre à jour le contexte auth si le personnage existe
+      if (hasCharacter !== true) {
+        setHasCharacter(true);
+      }
+    } catch (error: any) {
       const errorMessage = handleApiError(error);
       setError(errorMessage);
-      console.error('Error loading character data:', error);
+      
+      // Si c'est une erreur 404 "Character not found", c'est qu'il faut créer un personnage
+      if (errorMessage.includes('Character not found') || errorMessage.includes('not found')) {
+        console.log('⚠️ Character not found, user needs to create one');
+        setNeedsCharacterCreation(true);
+        setHasCharacter(false);
+        setError(null); // On ne considère pas ça comme une erreur
+      } else {
+        console.error('❌ Error loading character data:', error);
+      }
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, hasCharacter, setHasCharacter]);
 
   useEffect(() => {
     loadCharacterData();
@@ -76,6 +100,7 @@ export const useDashboard = (): UseDashboardReturn => {
     character,
     loading,
     error,
+    needsCharacterCreation,
     refreshData,
     updateAttributes,
   };
@@ -139,6 +164,7 @@ export const useQuests = () => {
 };
 
 // Hook pour les skills
+// Hook pour les skills
 export const useSkills = () => {
   const [skills, setSkills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,26 +198,25 @@ export const useSkills = () => {
   const upgradeSkill = useCallback(async (skillId: number) => {
     try {
       setError(null);
-      await apiService.upgradeSkill(skillId);
-      await loadSkills();
+      const result = await apiService.upgradeSkill(skillId);
+      return result;
     } catch (error) {
       const errorMessage = handleApiError(error);
       setError(errorMessage);
       throw error;
     }
-  }, [loadSkills]);
+  }, []);
 
   const removeSkill = useCallback(async (skillId: number) => {
     try {
       setError(null);
       await apiService.removeSkill(skillId);
-      await loadSkills();
     } catch (error) {
       const errorMessage = handleApiError(error);
       setError(errorMessage);
       throw error;
     }
-  }, [loadSkills]);
+  }, []);
 
   return {
     skills,

@@ -3,7 +3,6 @@ import { CharacterDashboard, Item, LeaderboardUser, Quest, QuestStatus, Skill } 
 // Configuration de l'API
 const API_BASE_URL = 'http://192.168.129.12:3000/api';
 
-
 class ApiService {
   private baseUrl: string;
   private authToken: string | null = null;
@@ -12,12 +11,10 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
-  // ✅ Ajoute cette méthode publique pour debug
   get debugBaseUrl() {
     return this.baseUrl;
   }
 
-  // Configuration de l'authentification
   setAuthToken(token: string) {
     this.authToken = token;
   }
@@ -26,14 +23,12 @@ class ApiService {
     this.authToken = null;
   }
 
-  // Méthode privée pour faire les requêtes
   private async makeRequest<T>(
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    // ✅ Ajoute ces logs pour debug
     console.log('🚀 Making request to:', url);
     console.log('🚀 Base URL:', this.baseUrl);
     console.log('🚀 Endpoint:', endpoint);
@@ -58,7 +53,6 @@ class ApiService {
     try {
       const response = await fetch(url, config);
 
-      // ✅ Ajoute aussi ce log
       console.log('📡 Response status:', response.status);
       console.log('📡 Response URL:', response.url);
 
@@ -75,7 +69,11 @@ class ApiService {
   }
 
   // Authentication
-  async login(email: string, password: string): Promise<{ user: any; token: string }> {
+  async login(email: string, password: string): Promise<{ 
+    user: any; 
+    token: string; 
+    hasCharacter: boolean 
+  }> {
     return this.makeRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -106,7 +104,7 @@ class ApiService {
     intelligence: number;
     endurance: number;
   }): Promise<any> {
-    return this.makeRequest('/character', {
+    return this.makeRequest('/character/create', {
       method: 'POST',
       body: JSON.stringify(characterData),
     });
@@ -170,7 +168,7 @@ class ApiService {
     description: string;
     maxLevel: number;
   }): Promise<any> {
-    return this.makeRequest('/skills', {
+    return this.makeRequest('/skills/create', {
       method: 'POST',
       body: JSON.stringify(skillData),
     });

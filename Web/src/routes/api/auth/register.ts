@@ -1,11 +1,10 @@
-// src/routes/api/auth/register.ts
 import { json } from "@solidjs/router";
 import { APIEvent } from "@solidjs/start/server";
 import bcrypt from "bcryptjs";
 import db from "~/lib/db";
 import { registerSchema } from "~/lib/validation";
 
-//Fonction GET temporaire pour tester
+// Fonction GET temporaire pour tester
 export async function GET() {
   return json({ error: "Method not allowed. Use POST." }, { status: 405 });
 }

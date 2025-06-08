@@ -64,7 +64,7 @@ export default function SignUpPage() {
             <p class="mt-2 text-sm text-gray-400">Begin your adventure now</p>
           </div>
 
-          {/*  Formulaire HTML natif qui fonctionne SANS JavaScript */}
+          {/* ✅ Formulaire HTML natif qui fonctionne SANS JavaScript */}
           <form action={register} method="post" class="space-y-6 mt-8">
             <div>
               <label for="name" class="block text-sm font-medium text-gray-300">
@@ -127,7 +127,7 @@ export default function SignUpPage() {
               />
             </div>
 
-            {/*  Validation côté client HTML5 + côté serveur */}
+            {/* ✅ Validation côté client HTML5 + côté serveur */}
             <noscript>
               <div class="p-3 bg-blue-900/30 border border-blue-600 rounded-lg">
                 <p class="text-blue-200 text-sm">
@@ -142,7 +142,7 @@ export default function SignUpPage() {
               />
             </Show>
 
-            {/*  Bouton de soumission HTML natif */}
+            {/* ✅ Bouton de soumission HTML natif */}
             <button
               type="submit"
               class="w-full py-2 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
@@ -152,7 +152,7 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          {/*  Lien HTML classique vers login */}
+          {/* ✅ Lien HTML classique vers login */}
           <p class="mt-4 text-center text-sm text-gray-400">
             Already have an account?{" "}
             <A href="/login" class="text-blue-400 hover:text-blue-500">
@@ -160,7 +160,7 @@ export default function SignUpPage() {
             </A>
           </p>
 
-          {/*  Informations importantes pour les utilisateurs */}
+          {/* ✅ Informations importantes pour les utilisateurs */}
           <div class="mt-6 p-4 bg-gray-750 rounded-lg border border-gray-600">
             <h3 class="text-sm font-medium text-gray-200 mb-2">Account Requirements:</h3>
             <ul class="text-xs text-gray-400 space-y-1">
@@ -171,6 +171,7 @@ export default function SignUpPage() {
             </ul>
           </div>
 
+          {/* ✅ Message informatif pour JavaScript désactivé */}
           <noscript>
             <div class="mt-6 p-4 bg-yellow-900/30 border border-yellow-600 rounded-lg">
               <p class="text-yellow-200 text-sm">
@@ -179,7 +180,7 @@ export default function SignUpPage() {
             </div>
           </noscript>
 
-          {/*  Information sur le processus */}
+          {/* ✅ Information sur le processus */}
           <div class="mt-6 border-t border-gray-700 pt-4">
             <p class="text-xs text-gray-500 text-center">
               After registration, you'll be redirected to login and can create your character.
@@ -188,6 +189,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
+      {/* ✅ Validation JavaScript progressive (enhancement) */}
       <script>
         {`
           // Progressive enhancement: validation côté client si JS activé

@@ -384,7 +384,7 @@ export default function DashboardLayout() {
                               </div>
                             }
                           >
-                            {charData.skills.map((skill) => (
+                            {charData.skills.map((skill: typeof charData.skills[number]) => (
                               <div class="bg-gray-700 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
                                   <span class="font-medium text-gray-300">
@@ -436,7 +436,7 @@ export default function DashboardLayout() {
                               </div>
                             }
                           >
-                            {charData.inventory.map((item) => (
+                            {charData.inventory.map((item: typeof charData.inventory[number]) => (
                               <div class="bg-gray-700 rounded-lg p-3">
                                 <div class="flex justify-between items-start">
                                   <div>

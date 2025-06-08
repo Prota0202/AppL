@@ -43,7 +43,7 @@ export async function POST({ request }: APIEvent) {
   }
 }
 
-//Fonction GET pour forcer la reconnaissance de la route
+// Fonction GET pour forcer la reconnaissance de la route
 export async function GET() {
   return json({ error: "Method not allowed. Use POST." }, { status: 405 });
 }

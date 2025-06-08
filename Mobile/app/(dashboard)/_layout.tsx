@@ -18,9 +18,13 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: Colors.background },
             }}
           >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(dashboard)" />
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="character-create" />
+                  <Stack.Screen name="inventory" />
+                  <Stack.Screen name="leaderboard" />
+                  <Stack.Screen name="quests" />
+                  <Stack.Screen name="skills" />
+                  <Stack.Screen name="skill-create" />
           </Stack>
         </AuthProvider>
       </SafeAreaProvider>
