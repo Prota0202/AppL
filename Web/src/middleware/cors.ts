@@ -4,7 +4,7 @@ import { redirect } from "@solidjs/router";
 import { authOptions } from "~/routes/api/auth/[...solidauth]";
 
 const authRoutes = ["/login", "/sign-up"];
-const protectedRoutes = ["/", "/quests", "/inventory", "/skills", "/leaderboard", "/quest/create", "/skill/create", "/character/create", "/checking"];
+const protectedRoutes = ["/", "/quests", "/inventory", "/skills", "/leaderboard", "/quest/create", "/skill/create", "/character/create"];
 
 export default createMiddleware({
   onRequest: async (event) => {

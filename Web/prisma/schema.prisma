@@ -126,5 +126,4 @@ enum Difficulty {
 
 enum Provider {
   CREDENTIALS
-  GITHUB
 }

@@ -1,5 +1,4 @@
 import Credentials from "@auth/core/providers/credentials";
-import GitHub from "@auth/core/providers/github"
 import { SolidAuth, SolidAuthConfig } from "@auth/solid-start"
 import bcrypt from "bcryptjs";
 import db from "~/lib/db";
@@ -8,31 +7,6 @@ const authOptions = {
   basePath: "/api/auth",
   secret: process.env.AUTH_SECRET,
   providers: [
-    GitHub({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-      async profile(profile) {
-        const email = profile.email || '';
-        const name = profile.name || '';
-        let user = await db.user.findUnique({ where: { email } });
-
-        if (!user) {
-          user = await db.user.create({
-            data: {
-              name,
-              email,
-              provider: 'GITHUB',
-            },
-          });
-        }
-
-        return {
-          id: user.id.toString(),
-          email: user.email,
-          name: user.name,
-        };
-      },
-    }),
     Credentials({
       name: 'Credentials',
       credentials: {
