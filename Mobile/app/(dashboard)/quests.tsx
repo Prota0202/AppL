@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, Animated, Dimensions, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LoadingSpinner from '../../src/components/common/LoadingSpinner';
 import { Colors } from '../../src/constants/colors';
-import { fakeQuests, simulateApiDelay } from '../../src/services/fakeData';
+import { apiService, handleApiError } from '../../src/services/apiService';
 import { Quest, QuestStatus } from '../../src/types';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface QuestTabProps {
   label: string;
@@ -15,28 +19,62 @@ interface QuestTabProps {
   onPress: () => void;
 }
 
-const QuestTab: React.FC<QuestTabProps> = ({ label, count, isActive, onPress }) => (
-  <TouchableOpacity
-    style={[styles.tab, isActive && styles.tabActive]}
-    onPress={onPress}
-  >
-    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-      {label}
-    </Text>
-    <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-      <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
-        {count}
-      </Text>
-    </View>
-  </TouchableOpacity>
-);
+const QuestTab: React.FC<QuestTabProps> = ({ label, count, isActive, onPress }) => {
+  const animatedValue = React.useRef(new Animated.Value(isActive ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animatedValue, {
+      toValue: isActive ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isActive, animatedValue]);
+
+  const backgroundColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [Colors.surface, Colors.primary],
+  });
+
+  const textColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [Colors.textMuted, Colors.textPrimary],
+  });
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Animated.View style={[styles.tab, { backgroundColor }]}>
+        <Animated.Text style={[styles.tabText, { color: textColor }]}>
+          {label}
+        </Animated.Text>
+        <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+          <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+            {count}
+          </Text>
+        </View>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
 
 interface QuestCardProps {
   quest: Quest;
   onAction: (questId: number, action: string) => void;
+  isUpdating?: boolean;
 }
 
-const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction }) => {
+const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction, isUpdating }) => {
+  const [localProgress, setLocalProgress] = useState(quest.progress);
+  const animatedProgress = React.useRef(new Animated.Value(quest.progress)).current;
+
+  React.useEffect(() => {
+    setLocalProgress(quest.progress);
+    Animated.timing(animatedProgress, {
+      toValue: quest.progress,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [quest.progress, animatedProgress]);
+
   const getDifficultyColor = (difficulty: string) => {
     return Colors.difficulty[difficulty as keyof typeof Colors.difficulty] || Colors.difficulty.E;
   };
@@ -47,13 +85,28 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction }) => {
     const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
     if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)} hours ago`;
+      return `${Math.floor(diffInHours)}h ago`;
     } else {
-      return `${Math.floor(diffInHours / 24)} days ago`;
+      return `${Math.floor(diffInHours / 24)}d ago`;
     }
   };
 
   const difficultyColors = getDifficultyColor(quest.difficulty);
+
+  const handleAction = (action: string) => {
+    if (action === 'cancel') {
+      Alert.alert(
+        'Cancel Quest',
+        'Are you sure you want to cancel this quest? This action cannot be undone.',
+        [
+          { text: 'No', style: 'cancel' },
+          { text: 'Yes', style: 'destructive', onPress: () => onAction(quest.id, action) },
+        ]
+      );
+    } else {
+      onAction(quest.id, action);
+    }
+  };
 
   return (
     <View style={styles.questCard}>
@@ -81,31 +134,42 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction }) => {
           <View style={styles.progressContainer}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressLabel}>Progress</Text>
-              <Text style={styles.progressPercent}>{quest.progress}%</Text>
+              <Text style={styles.progressPercent}>{Math.round(localProgress)}%</Text>
             </View>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${quest.progress}%` }]} />
+              <Animated.View 
+                style={[
+                  styles.progressFill, 
+                  { 
+                    width: animatedProgress.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%'],
+                      extrapolate: 'clamp',
+                    })
+                  }
+                ]} 
+              />
             </View>
           </View>
         )}
 
         <View style={styles.questMeta}>
           <View style={styles.rewardContainer}>
-            <Text style={styles.rewardLabel}>Reward:</Text>
+            <Ionicons name="gift" size={16} color={Colors.warning} />
             <Text style={styles.rewardText}>{quest.reward}</Text>
           </View>
 
           {quest.completedDate && (
             <View style={styles.statusContainer}>
-              <Text style={styles.statusLabel}>Completed:</Text>
-              <Text style={styles.statusText}>{formatDate(quest.completedDate)}</Text>
+              <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+              <Text style={styles.statusText}>Completed {formatDate(quest.completedDate)}</Text>
             </View>
           )}
 
           {quest.failedDate && (
             <View style={styles.statusContainer}>
-              <Text style={styles.statusLabel}>Failed:</Text>
-              <Text style={styles.statusText}>{formatDate(quest.failedDate)}</Text>
+              <Ionicons name="close-circle" size={14} color={Colors.error} />
+              <Text style={styles.statusText}>Failed {formatDate(quest.failedDate)}</Text>
             </View>
           )}
         </View>
@@ -120,25 +184,43 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction }) => {
         <View style={styles.questActions}>
           {quest.status === 'AVAILABLE' && (
             <TouchableOpacity
-              style={styles.acceptButton}
-              onPress={() => onAction(quest.id, 'accept')}
+              style={[styles.acceptButton, isUpdating && styles.buttonDisabled]}
+              onPress={() => handleAction('accept')}
+              disabled={isUpdating}
             >
-              <Text style={styles.acceptButtonText}>Accept Quest</Text>
+              {isUpdating ? (
+                <LoadingSpinner size="small" showMessage={false} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={16} color={Colors.textPrimary} />
+                  <Text style={styles.acceptButtonText}>Accept Quest</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
 
           {quest.status === 'IN_PROGRESS' && (
             <View style={styles.actionRow}>
               <TouchableOpacity
-                style={styles.progressButton}
-                onPress={() => onAction(quest.id, 'progress')}
+                style={[styles.progressButton, isUpdating && styles.buttonDisabled]}
+                onPress={() => handleAction('progress')}
+                disabled={isUpdating}
               >
-                <Text style={styles.progressButtonText}>Update Progress</Text>
+                {isUpdating ? (
+                  <LoadingSpinner size="small" showMessage={false} />
+                ) : (
+                  <>
+                    <Ionicons name="arrow-forward" size={14} color={Colors.textPrimary} />
+                    <Text style={styles.progressButtonText}>Update Progress</Text>
+                  </>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => onAction(quest.id, 'cancel')}
+                style={[styles.cancelButton, isUpdating && styles.buttonDisabled]}
+                onPress={() => handleAction('cancel')}
+                disabled={isUpdating}
               >
+                <Ionicons name="close" size={14} color={Colors.textPrimary} />
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -150,6 +232,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction }) => {
 };
 
 export default function QuestsScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<QuestStatus>('AVAILABLE');
   const [quests, setQuests] = useState<Record<QuestStatus, Quest[]>>({
     AVAILABLE: [],
@@ -158,6 +241,8 @@ export default function QuestsScreen() {
     FAILED: [],
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatingQuests, setUpdatingQuests] = useState<Set<number>>(new Set());
 
   const questTabs = [
     { label: 'Available', value: 'AVAILABLE' as QuestStatus },
@@ -166,101 +251,167 @@ export default function QuestsScreen() {
     { label: 'Failed', value: 'FAILED' as QuestStatus },
   ];
 
-  useEffect(() => {
-    loadQuests();
-  }, []);
-
-  const loadQuests = async () => {
+  const loadQuests = useCallback(async () => {
     try {
       setLoading(true);
-      await simulateApiDelay(1000);
-      setQuests(fakeQuests);
+      console.log('🎯 Loading quests...');
+      
+      const data = await apiService.getQuests();
+      console.log('✅ Quests loaded:', data);
+      setQuests(data);
     } catch (error) {
-      console.error('Error loading quests:', error);
-      Alert.alert('Error', 'Failed to load quests');
+      console.error('❌ Error loading quests:', error);
+      const errorMessage = handleApiError(error);
+      Alert.alert('Connection Error', errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadQuests();
+    }, [loadQuests])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadQuests();
+    } catch (error) {
+      console.error('Error refreshing quests:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadQuests]);
 
   const handleQuestAction = async (questId: number, action: string) => {
     try {
-      await simulateApiDelay(500);
-
-      if (action === 'accept') {
-        Alert.alert('Success!', 'Quest accepted successfully!');
-      } else if (action === 'progress') {
-        Alert.alert('Success!', 'Progress updated successfully!');
-      } else if (action === 'cancel') {
-        Alert.alert(
-          'Confirm',
-          'Are you sure you want to cancel this quest?',
-          [
-            { text: 'No', style: 'cancel' },
-            {
-              text: 'Yes',
-              onPress: () => {
-                Alert.alert('Quest Cancelled', 'The quest has been cancelled.');
-              },
-            },
-          ]
-        );
+      setUpdatingQuests(prev => new Set(prev).add(questId));
+      
+      const result = await apiService.updateQuest(questId, action as 'accept' | 'progress' | 'cancel');
+      
+      let successMessage = '';
+      switch (action) {
+        case 'accept':
+          successMessage = 'Quest accepted successfully!';
+          break;
+        case 'progress':
+          successMessage = 'Progress updated successfully!';
+          break;
+        case 'cancel':
+          successMessage = 'Quest cancelled';
+          break;
       }
+      
+      Alert.alert('Success!', successMessage);
+      
+      // Reload quests after successful action
+      await loadQuests();
     } catch (error) {
-      Alert.alert('Error', 'Action failed. Please try again.');
+      const errorMessage = handleApiError(error);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setUpdatingQuests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(questId);
+        return newSet;
+      });
     }
   };
 
   const renderQuestItem = ({ item }: { item: Quest }) => (
-    <QuestCard quest={item} onAction={handleQuestAction} />
+    <QuestCard 
+      quest={item} 
+      onAction={handleQuestAction}
+      isUpdating={updatingQuests.has(item.id)}
+    />
   );
 
-  if (loading) {
+  if (loading && Object.values(quests).every(arr => arr.length === 0)) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
         <LoadingSpinner size="large" message="Loading quests..." />
+        <Text style={styles.debugText}>
+          API URL: {apiService.debugBaseUrl}
+        </Text>
+        <Text style={styles.debugText}>
+          Platform: {Platform.OS}
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.createButton}>
-          <Text style={styles.createButtonText}>Create Quest</Text>
+        <Text style={styles.title}>Quest Board</Text>
+        <TouchableOpacity 
+          style={styles.createButton}
+          onPress={() => router.push('/(dashboard)/quest-create')}
+        >
+          <Ionicons name="add" size={20} color={Colors.textPrimary} />
+          <Text style={styles.createButtonText}>Create</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.tabRow}>
-            {questTabs.map((tab) => (
-              <QuestTab
-                key={tab.value}
-                label={tab.label}
-                value={tab.value}
-                count={quests[tab.value].length}
-                isActive={activeTab === tab.value}
-                onPress={() => setActiveTab(tab.value)}
-              />
-            ))}
-          </View>
-        </ScrollView>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={questTabs}
+          keyExtractor={(item) => item.value}
+          renderItem={({ item }) => (
+            <QuestTab
+              label={item.label}
+              value={item.value}
+              count={quests[item.value].length}
+              isActive={activeTab === item.value}
+              onPress={() => setActiveTab(item.value)}
+            />
+          )}
+          contentContainerStyle={styles.tabRow}
+        />
       </View>
 
       <FlatList
         data={quests[activeTab]}
         renderItem={renderQuestItem}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.questList}
+        contentContainerStyle={[
+          styles.questList,
+          { paddingBottom: insets.bottom + 20 }
+        ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyText}>
-              No quests currently in this category.
-            </Text>
-          </View>
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No Quests</Text>
+              <Text style={styles.emptyText}>
+                {activeTab === 'AVAILABLE' ? 
+                  'No quests available right now. Create a new quest to get started!' :
+                  `No quests in the ${activeTab.toLowerCase().replace('_', ' ')} category.`
+                }
+              </Text>
+              {activeTab === 'AVAILABLE' && (
+                <TouchableOpacity
+                  style={styles.emptyCreateButton}
+                  onPress={() => router.push('/(dashboard)/quest-create')}
+                >
+                  <Ionicons name="add" size={16} color={Colors.textPrimary} />
+                  <Text style={styles.emptyCreateButtonText}>Create Your First Quest</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null
         }
       />
     </View>
@@ -277,53 +428,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
+    padding: 20,
+  },
+  debugText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginTop: 10,
+    textAlign: 'center',
   },
   header: {
-    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  title: {
+    fontSize: width < 400 ? 20 : 24, // Responsive font size
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
   createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    alignSelf: 'flex-start',
+    gap: 4,
   },
   createButtonText: {
     color: Colors.textPrimary,
     fontWeight: 'bold',
+    fontSize: 14,
   },
   tabContainer: {
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    paddingVertical: 8,
   },
   tabRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: width < 400 ? 12 : 16, // Responsive padding
+    paddingVertical: 10,
     borderRadius: 8,
     marginHorizontal: 4,
-    minWidth: 120,
-  },
-  tabActive: {
-    backgroundColor: Colors.primary,
+    minWidth: width < 400 ? 100 : 120, // Responsive min width
   },
   tabText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: width < 400 ? 12 : 14, // Responsive font size
+    fontWeight: '600',
     marginRight: 8,
-  },
-  tabTextActive: {
-    color: Colors.textPrimary,
   },
   tabBadge: {
     backgroundColor: Colors.surfaceLight,
@@ -334,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBadgeActive: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: Colors.primaryDark,
   },
   tabBadgeText: {
     color: Colors.textMuted,
@@ -342,7 +504,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   tabBadgeTextActive: {
-    color: '#93C5FD',
+    color: Colors.primaryLight,
   },
   questList: {
     padding: 16,
@@ -352,12 +514,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   questHeader: {
     height: 4,
   },
   questContent: {
-    padding: 20,
+    padding: width < 400 ? 16 : 20, // Responsive padding
   },
   questTitleRow: {
     flexDirection: 'row',
@@ -366,8 +533,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   questTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: width < 400 ? 16 : 18, // Responsive font size
+    fontWeight: '700',
     color: Colors.textPrimary,
     flex: 1,
     marginRight: 12,
@@ -375,7 +542,7 @@ const styles = StyleSheet.create({
   difficultyBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   difficultyText: {
     fontSize: 12,
@@ -398,10 +565,12 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 12,
     color: Colors.textMuted,
+    fontWeight: '600',
   },
   progressPercent: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: Colors.primary,
+    fontWeight: 'bold',
   },
   progressBar: {
     height: 8,
@@ -416,41 +585,33 @@ const styles = StyleSheet.create({
   },
   questMeta: {
     marginBottom: 16,
+    gap: 8,
   },
   rewardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surfaceLight,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 8,
-  },
-  rewardLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    marginBottom: 4,
+    gap: 8,
   },
   rewardText: {
     fontSize: 14,
     color: Colors.textSecondary,
+    fontWeight: '500',
+    flex: 1,
   },
   statusContainer: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  statusLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: Colors.success,
-    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   statusText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+    fontSize: 12,
+    color: Colors.textMuted,
   },
   reasonContainer: {
-    backgroundColor: '#7C2D12',
+    backgroundColor: Colors.error + '20',
     borderWidth: 1,
     borderColor: Colors.error,
     borderRadius: 8,
@@ -465,7 +626,8 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 14,
-    color: '#FCA5A5',
+    color: Colors.error,
+    opacity: 0.8,
   },
   questActions: {
     marginTop: 8,
@@ -475,6 +637,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
   },
   acceptButtonText: {
     color: Colors.textPrimary,
@@ -491,10 +656,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
   },
   progressButtonText: {
     color: Colors.textPrimary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   cancelButton: {
@@ -503,24 +671,48 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
   },
   cancelButtonText: {
     color: Colors.textPrimary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 20,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-    opacity: 0.6,
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.textMuted,
     textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyCreateButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyCreateButtonText: {
+    color: Colors.textPrimary,
+    fontWeight: 'bold',
   },
 });
