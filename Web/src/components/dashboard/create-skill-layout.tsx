@@ -8,6 +8,8 @@ import LoadingSpinner from '~/components/loading';
 import db from '~/lib/db';
 import { skillSchema } from '~/lib/validation';
 import { getRequestEvent } from "solid-js/web";
+import { ErrorBoundary } from 'solid-js';
+
 
 export const getCreateSkillData = query(async () => {
   "use server";
@@ -77,7 +79,17 @@ export default function CreateSkillLayout() {
   const submission = useSubmission(createSkill);
 
   return (
-    <Layout>
+  <Layout>
+    <ErrorBoundary
+      fallback={
+        <div class="h-screen flex justify-center items-center">
+          <div class="text-center">
+            <h2 class="text-2xl font-bold text-red-500">An unexpected error occurred</h2>
+            <p class="text-gray-300 mt-2">Unable to load the skill creation form.</p>
+          </div>
+        </div>
+      }
+    >
       <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-center text-blue-400 mb-8">Add New Skill</h1>
 
@@ -174,6 +186,7 @@ export default function CreateSkillLayout() {
           )}
         </Show>
       </div>
-    </Layout>
-  );
+    </ErrorBoundary>
+  </Layout>
+);
 }

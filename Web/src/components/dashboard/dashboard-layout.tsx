@@ -10,6 +10,8 @@ import { useToast } from "~/components/toast/toast";
 import { getSession } from "@auth/solid-start";
 import { authOptions } from "~/routes/api/auth/[...solidauth]";
 import { getRequestEvent } from "solid-js/web";
+import { ErrorBoundary } from "solid-js";
+
 
 type AttributesType = Pick<
   CharacterDashboardType,
@@ -168,7 +170,17 @@ export default function DashboardLayout() {
   };
 
   return (
-    <Layout>
+  <Layout>
+    <ErrorBoundary
+      fallback={
+        <div class="h-screen flex justify-center items-center">
+          <div class="text-center">
+            <h2 class="text-2xl font-bold text-red-500">An unexpected error occurred</h2>
+            <p class="text-gray-300 mt-2">Unable to load character dashboard.</p>
+          </div>
+        </div>
+      }
+    >
       <div class="container mx-auto h-full px-4 py-8">
         <Show
           when={character() !== undefined && character() !== null && attributes() !== null}
@@ -180,7 +192,7 @@ export default function DashboardLayout() {
         >
           {
             (() => {
-              const charData = character()!; 
+              const charData = character()!;
               const attrs = attributes()!;
 
               return (
@@ -211,8 +223,7 @@ export default function DashboardLayout() {
                         <div class="flex justify-between text-sm text-gray-300 mb-1">
                           <span>XP</span>
                           <span>
-                            {charData.experience} /{" "}
-                            {charData.maxExpNeeded || "-"}
+                            {charData.experience} / {charData.maxExpNeeded || "-"}
                           </span>
                         </div>
                         <div class="w-full bg-gray-500 rounded-full h-2.5">
@@ -225,9 +236,7 @@ export default function DashboardLayout() {
                     </div>
 
                     <div class="p-6">
-                      <h3 class="text-lg font-medium text-gray-200 mb-4">
-                        Attributes
-                      </h3>
+                      <h3 class="text-lg font-medium text-gray-200 mb-4">Attributes</h3>
 
                       <div class="space-y-4">
                         <AttributeBar
@@ -236,12 +245,8 @@ export default function DashboardLayout() {
                           color="bg-red-500"
                           iconColor="text-red-400"
                           iconBg="bg-red-900"
-                          onDecrement={() =>
-                            handleAttributeDecrement("strength")
-                          }
-                          onIncrement={() =>
-                            handleAttributeIncrement("strength")
-                          }
+                          onDecrement={() => handleAttributeDecrement("strength")}
+                          onIncrement={() => handleAttributeIncrement("strength")}
                           disabledDecrement={attrs.strength <= charData.strength}
                           disabledIncrement={attrs.availablePoints === 0}
                         />
@@ -251,15 +256,9 @@ export default function DashboardLayout() {
                           color="bg-blue-500"
                           iconColor="text-blue-400"
                           iconBg="bg-blue-900"
-                          onDecrement={() =>
-                            handleAttributeDecrement("intelligence")
-                          }
-                          onIncrement={() =>
-                            handleAttributeIncrement("intelligence")
-                          }
-                          disabledDecrement={
-                            attrs.intelligence <= charData.intelligence
-                          }
+                          onDecrement={() => handleAttributeDecrement("intelligence")}
+                          onIncrement={() => handleAttributeIncrement("intelligence")}
+                          disabledDecrement={attrs.intelligence <= charData.intelligence}
                           disabledIncrement={attrs.availablePoints === 0}
                         />
                         <AttributeBar
@@ -268,15 +267,9 @@ export default function DashboardLayout() {
                           color="bg-green-500"
                           iconColor="text-green-400"
                           iconBg="bg-green-900"
-                          onDecrement={() =>
-                            handleAttributeDecrement("endurance")
-                          }
-                          onIncrement={() =>
-                            handleAttributeIncrement("endurance")
-                          }
-                          disabledDecrement={
-                            attrs.endurance <= charData.endurance
-                          }
+                          onDecrement={() => handleAttributeDecrement("endurance")}
+                          onIncrement={() => handleAttributeIncrement("endurance")}
+                          disabledDecrement={attrs.endurance <= charData.endurance}
                           disabledIncrement={attrs.availablePoints === 0}
                         />
                       </div>
@@ -284,10 +277,7 @@ export default function DashboardLayout() {
                         <button
                           class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium cursor-pointer"
                           onClick={async () => {
-                            const res = await upgradeAttributesAction(
-                              charData.id,
-                              attrs
-                            );
+                            const res = await upgradeAttributesAction(charData.id, attrs);
                             if (res.success && res.data) {
                               setAttributes(res.data);
                               toast.achievement(res.success);
@@ -305,14 +295,12 @@ export default function DashboardLayout() {
                   {/* Main Content Area */}
                   <div class="lg:col-span-2 space-y-4">
                     <Show when={searchParams.create_character === "success"}>
-                      <SuccessAlert message="Wohoo...You have successfully created your character🔥" />
+                      <SuccessAlert message="Wohoo... You have successfully created your character 🔥" />
                     </Show>
 
                     {/* Quest Summary */}
                     <div class="bg-gray-800 rounded-xl shadow-lg p-6">
-                      <h3 class="text-lg font-medium text-gray-200 mb-4">
-                        Quest Summary
-                      </h3>
+                      <h3 class="text-lg font-medium text-gray-200 mb-4">Quest Summary</h3>
 
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="bg-green-900/30 rounded-lg p-4 text-center">
@@ -321,14 +309,12 @@ export default function DashboardLayout() {
                           </h4>
                           <span class="text-sm text-gray-400">Completed</span>
                         </div>
-
                         <div class="bg-yellow-900/30 rounded-lg p-4 text-center">
                           <h4 class="text-2xl font-bold text-yellow-400">
                             {charData.quests.inProgress}
                           </h4>
                           <span class="text-sm text-gray-400">In Progress</span>
                         </div>
-
                         <div class="bg-red-900/30 rounded-lg p-4 text-center">
                           <h4 class="text-2xl font-bold text-red-400">
                             {charData.quests.failed}
@@ -364,32 +350,17 @@ export default function DashboardLayout() {
                             when={charData.skills.length > 0}
                             fallback={
                               <div class="flex flex-col items-center justify-center py-14 text-gray-400">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  class="h-10 w-10 mb-4 text-gray-600"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width={2}
-                                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                                  />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
-                                <p class="text-sm font-medium">
-                                  You don't have any skills yet
-                                </p>
+                                <p class="text-sm font-medium">You don't have any skills yet</p>
                               </div>
                             }
                           >
                             {charData.skills.map((skill: typeof charData.skills[number]) => (
                               <div class="bg-gray-700 rounded-lg p-3">
                                 <div class="flex justify-between items-center">
-                                  <span class="font-medium text-gray-300">
-                                    {skill.name}
-                                  </span>
+                                  <span class="font-medium text-gray-300">{skill.name}</span>
                                   <span class="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded">
                                     Lvl {skill.level}/{skill.maxLevel}
                                   </span>
@@ -403,9 +374,7 @@ export default function DashboardLayout() {
                       {/* Inventory */}
                       <div class="bg-gray-800 rounded-xl shadow-lg p-6">
                         <div class="flex justify-between items-center mb-4">
-                          <h3 class="text-lg font-medium text-gray-200">
-                            Inventory
-                          </h3>
+                          <h3 class="text-lg font-medium text-gray-200">Inventory</h3>
                           <A href="/inventory">
                             <button class="text-sm text-blue-400 hover:text-blue-500">
                               View All
@@ -418,19 +387,8 @@ export default function DashboardLayout() {
                             when={charData.inventory.length > 0}
                             fallback={
                               <div class="flex flex-col items-center justify-center py-14 text-gray-400">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  class="h-10 w-10 mb-4 text-gray-600"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width={2}
-                                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                                  />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                 </svg>
                                 <p class="text-sm font-medium">Inventory is empty</p>
                               </div>
@@ -440,12 +398,8 @@ export default function DashboardLayout() {
                               <div class="bg-gray-700 rounded-lg p-3">
                                 <div class="flex justify-between items-start">
                                   <div>
-                                    <div class="font-medium text-gray-300">
-                                      {item.name}
-                                    </div>
-                                    <div class="text-xs text-gray-400">
-                                      {item.description}
-                                    </div>
+                                    <div class="font-medium text-gray-300">{item.name}</div>
+                                    <div class="text-xs text-gray-400">{item.description}</div>
                                   </div>
                                   <span class="block min-w-8 text-center text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded">
                                     x{item.quantity}
@@ -464,6 +418,7 @@ export default function DashboardLayout() {
           }
         </Show>
       </div>
-    </Layout>
+    </ErrorBoundary>
+  </Layout>
   );
 }

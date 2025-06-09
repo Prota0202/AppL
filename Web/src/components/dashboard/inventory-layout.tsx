@@ -4,6 +4,8 @@ import Layout from "~/components/layout";
 import LoadingSpinner from "~/components/loading";
 import { Item } from "~/lib/types";
 import { getInventoryData } from "~/lib/route-data";
+import { ErrorBoundary } from "solid-js";
+
 
 const InventoryLayout: Component = () => {
   
@@ -32,7 +34,17 @@ const InventoryLayout: Component = () => {
   );
 
   return (
-    <Layout>
+  <Layout>
+    <ErrorBoundary
+      fallback={
+        <div class="h-screen flex justify-center items-center">
+          <div class="text-center">
+            <h2 class="text-2xl font-bold text-red-500">An unexpected error occurred</h2>
+            <p class="text-gray-300 mt-2">Unable to load your inventory.</p>
+          </div>
+        </div>
+      }
+    >
       <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-center text-blue-400 mb-8">Inventory</h1>
 
@@ -47,11 +59,11 @@ const InventoryLayout: Component = () => {
           </div>
           <Show
             when={inventory()}
-            fallback={(
+            fallback={
               <div class="py-10">
                 <LoadingSpinner size="medium" />
               </div>
-            )}
+            }
           >
             {(items) => (
               <Show
@@ -74,8 +86,9 @@ const InventoryLayout: Component = () => {
           </Show>
         </div>
       </div>
-    </Layout>
-  );
+    </ErrorBoundary>
+  </Layout>
+);
 };
 
 export default InventoryLayout;
