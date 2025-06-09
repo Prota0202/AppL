@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState, useMemo } from 'react';
+import { Alert, Animated, Dimensions, FlatList, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useInventory } from '../../hooks/useDashboard'; // Import du hook d'inventaire
+import { useInventory } from '../../hooks/useDashboard';
 import LoadingSpinner from '../../src/components/common/LoadingSpinner';
 import { Colors } from '../../src/constants/colors';
 import { apiService, handleApiError } from '../../src/services/apiService';
@@ -235,6 +235,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onAction, isUpdating }) =>
 export default function QuestsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<QuestStatus>('AVAILABLE');
+  const [searchQuery, setSearchQuery] = useState('');
   const [quests, setQuests] = useState<Record<QuestStatus, Quest[]>>({
     AVAILABLE: [],
     IN_PROGRESS: [],
@@ -254,6 +255,29 @@ export default function QuestsScreen() {
     { label: 'Completed', value: 'COMPLETED' as QuestStatus },
     { label: 'Failed', value: 'FAILED' as QuestStatus },
   ];
+
+  // ✅ Fonction pour filtrer les quêtes selon la recherche
+  const filteredQuests = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return quests;
+    }
+    
+    const filtered: Record<QuestStatus, Quest[]> = {
+      AVAILABLE: [],
+      IN_PROGRESS: [],
+      COMPLETED: [],
+      FAILED: [],
+    };
+    
+    Object.keys(quests).forEach(status => {
+      filtered[status as QuestStatus] = quests[status as QuestStatus].filter(quest =>
+        quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        quest.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    });
+    
+    return filtered;
+  }, [quests, searchQuery]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -293,80 +317,80 @@ export default function QuestsScreen() {
   }, [loadQuests, refreshInventory]);
 
   const handleQuestAction = async (questId: number, action: string) => {
-  try {
-    setUpdatingQuests(prev => new Set(prev).add(questId));
-    
-    console.log('🎯 Quest action:', { questId, action });
-    
-    const result = await apiService.updateQuest(questId, action as 'accept' | 'progress' | 'cancel');
-    
-    console.log('✅ Quest action result:', result);
-    
-    let successMessage = '';
-    let shouldRefreshInventory = false;
-    
-    switch (action) {
-      case 'accept':
-        successMessage = 'Quest accepted successfully!';
-        break;
-      case 'progress':
-        // Vérifier si la quête a été complétée (100% de progression)
-        if (result && (result.progress >= 100 || result.status === 'COMPLETED')) {
-          successMessage = `Quest completed! 🎉\n\nRewards received:\n• ${result.reward || 'XP reward'}`;
-          shouldRefreshInventory = true;
-          console.log('🎁 Quest completed, should refresh inventory');
-        } else {
-          successMessage = 'Progress updated successfully!';
-        }
-        break;
-      case 'cancel':
-        successMessage = 'Quest cancelled';
-        break;
-    }
-    
-    Alert.alert('Success!', successMessage);
-    
-    // Rafraîchir les quêtes immédiatement
-    await loadQuests();
-    
-    // Si la quête est complétée, attendre un peu puis rafraîchir l'inventaire
-    if (shouldRefreshInventory) {
-      console.log('⏳ Waiting 2 seconds before refreshing inventory...');
+    try {
+      setUpdatingQuests(prev => new Set(prev).add(questId));
       
-      // Attendre 2 secondes pour laisser le temps au backend de traiter les récompenses
-      setTimeout(async () => {
-        console.log('🔄 Refreshing inventory after quest completion...');
-        try {
-          await refreshInventory();
-          console.log('✅ Inventory refreshed successfully');
-          
-          // Optionnel : afficher un toast pour confirmer les récompenses
-          Alert.alert(
-            'Rewards Added! 🎁', 
-            'Check your inventory for the new items!',
-            [{ text: 'Open Inventory', onPress: () => router.push('/(dashboard)/inventory') }]
-          );
-        } catch (error) {
-          console.error('❌ Failed to refresh inventory:', error);
-        }
-      }, 2000);
-    } else {
-      // Rafraîchir l'inventaire normalement pour les autres actions
-      await refreshInventory();
+      console.log('🎯 Quest action:', { questId, action });
+      
+      const result = await apiService.updateQuest(questId, action as 'accept' | 'progress' | 'cancel');
+      
+      console.log('✅ Quest action result:', result);
+      
+      let successMessage = '';
+      let shouldRefreshInventory = false;
+      
+      switch (action) {
+        case 'accept':
+          successMessage = 'Quest accepted successfully!';
+          break;
+        case 'progress':
+          // Vérifier si la quête a été complétée (100% de progression)
+          if (result && (result.progress >= 100 || result.status === 'COMPLETED')) {
+            successMessage = `Quest completed! 🎉\n\nRewards received:\n• ${result.reward || 'XP reward'}`;
+            shouldRefreshInventory = true;
+            console.log('🎁 Quest completed, should refresh inventory');
+          } else {
+            successMessage = 'Progress updated successfully!';
+          }
+          break;
+        case 'cancel':
+          successMessage = 'Quest cancelled';
+          break;
+      }
+      
+      Alert.alert('Success!', successMessage);
+      
+      // Rafraîchir les quêtes immédiatement
+      await loadQuests();
+      
+      // Si la quête est complétée, attendre un peu puis rafraîchir l'inventaire
+      if (shouldRefreshInventory) {
+        console.log('⏳ Waiting 2 seconds before refreshing inventory...');
+        
+        // Attendre 2 secondes pour laisser le temps au backend de traiter les récompenses
+        setTimeout(async () => {
+          console.log('🔄 Refreshing inventory after quest completion...');
+          try {
+            await refreshInventory();
+            console.log('✅ Inventory refreshed successfully');
+            
+            // Optionnel : afficher un toast pour confirmer les récompenses
+            Alert.alert(
+              'Rewards Added! 🎁', 
+              'Check your inventory for the new items!',
+              [{ text: 'Open Inventory', onPress: () => router.push('/(dashboard)/inventory') }]
+            );
+          } catch (error) {
+            console.error('❌ Failed to refresh inventory:', error);
+          }
+        }, 2000);
+      } else {
+        // Rafraîchir l'inventaire normalement pour les autres actions
+        await refreshInventory();
+      }
+      
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      Alert.alert('Error', errorMessage);
+      console.error('❌ Quest action failed:', error);
+    } finally {
+      setUpdatingQuests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(questId);
+        return newSet;
+      });
     }
-    
-  } catch (error) {
-    const errorMessage = handleApiError(error);
-    Alert.alert('Error', errorMessage);
-    console.error('❌ Quest action failed:', error);
-  } finally {
-    setUpdatingQuests(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(questId);
-      return newSet;
-    });
-  }
-};
+  };
 
   const renderQuestItem = ({ item }: { item: Quest }) => (
     <QuestCard 
@@ -403,6 +427,23 @@ export default function QuestsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* ✅ Barre de recherche */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search quests..."
+          placeholderTextColor={Colors.textMuted}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.tabContainer}>
         <FlatList
           horizontal
@@ -413,7 +454,7 @@ export default function QuestsScreen() {
             <QuestTab
               label={item.label}
               value={item.value}
-              count={quests[item.value].length}
+              count={filteredQuests[item.value].length}
               isActive={activeTab === item.value}
               onPress={() => setActiveTab(item.value)}
             />
@@ -423,7 +464,7 @@ export default function QuestsScreen() {
       </View>
 
       <FlatList
-        data={quests[activeTab]}
+        data={filteredQuests[activeTab]}
         renderItem={renderQuestItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[
@@ -442,14 +483,18 @@ export default function QuestsScreen() {
           !loading ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="document-text-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No Quests</Text>
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? 'No matching quests' : 'No Quests'}
+              </Text>
               <Text style={styles.emptyText}>
-                {activeTab === 'AVAILABLE' ? 
-                  'No quests available right now. Create a new quest to get started!' :
-                  `No quests in the ${activeTab.toLowerCase().replace('_', ' ')} category.`
+                {searchQuery 
+                  ? `No quests found matching "${searchQuery}"`
+                  : activeTab === 'AVAILABLE' 
+                    ? 'No quests available right now. Create a new quest to get started!'
+                    : `No quests in the ${activeTab.toLowerCase().replace('_', ' ')} category.`
                 }
               </Text>
-              {activeTab === 'AVAILABLE' && (
+              {activeTab === 'AVAILABLE' && !searchQuery && (
                 <TouchableOpacity
                   style={styles.emptyCreateButton}
                   onPress={() => router.push('/(dashboard)/quest-create')}
@@ -511,6 +556,30 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  // ✅ Styles pour la recherche
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  clearButton: {
+    marginLeft: 8,
   },
   tabContainer: {
     backgroundColor: Colors.surface,
