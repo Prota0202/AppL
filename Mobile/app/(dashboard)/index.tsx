@@ -69,20 +69,20 @@ export default function DashboardScreen() {
   const handleAllocatePoints = async () => {
     try {
       await updateAttributes(attributes);
-      Alert.alert('Succès!', 'Les attributs ont été alloués avec succès!');
+      Alert.alert('Success!', 'Attributes have been allocated successfully!');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour les attributs');
+      Alert.alert('Error', 'Unable to update attributes');
     }
   };
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'Logout',
+      'Are you sure you want to logout?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -114,7 +114,7 @@ export default function DashboardScreen() {
   if (loading && !character) {
     return (
       <View style={styles.loadingContainer}>
-        <LoadingSpinner size="large" message="Chargement des données du personnage..." />
+        <LoadingSpinner size="large" message="Loading character data..." />
       </View>
     );
   }
@@ -122,12 +122,12 @@ export default function DashboardScreen() {
   if (error && !character) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Erreur: {error}</Text>
+        <Text style={styles.errorText}>Error: {error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={refreshData}>
-          <Text style={styles.retryButtonText}>Réessayer</Text>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Se déconnecter</Text>
+          <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
     );
@@ -136,9 +136,9 @@ export default function DashboardScreen() {
   if (!character) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Aucun personnage trouvé</Text>
+        <Text style={styles.errorText}>No character found</Text>
         <TouchableOpacity style={styles.retryButton} onPress={refreshData}>
-          <Text style={styles.retryButtonText}>Réessayer</Text>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -158,9 +158,9 @@ export default function DashboardScreen() {
       <View style={styles.content}>
         {/* Header avec bouton de déconnexion */}
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>Bonjour, {user?.name}!</Text>
+          <Text style={styles.welcomeText}>Hello, {user?.name}!</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutHeaderButton}>
-            <Text style={styles.logoutHeaderText}>Déconnexion</Text>
+            <Text style={styles.logoutHeaderText}>Logout</Text>
           </TouchableOpacity>
         </View>
 
@@ -177,7 +177,7 @@ export default function DashboardScreen() {
               </Text>
             </View>
             <View style={styles.pointsContainer}>
-              <Text style={styles.pointsLabel}>Points disponibles:</Text>
+              <Text style={styles.pointsLabel}>Available points:</Text>
               <Text style={styles.pointsValue}>{attributes.availablePoints}</Text>
             </View>
             <View style={styles.expContainer}>
@@ -194,9 +194,9 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.attributesSection}>
-            <Text style={styles.sectionTitle}>Attributs</Text>
+            <Text style={styles.sectionTitle}>Attributes</Text>
             <AttributeBar
-              label="Force"
+              label="Strength"
               value={attributes.strength}
               color={Colors.error}
               iconColor="#EF4444"
@@ -243,26 +243,26 @@ export default function DashboardScreen() {
                 attributes.endurance === character.endurance
               }
             >
-              <Text style={styles.allocateButtonText}>Allouer les points</Text>
+              <Text style={styles.allocateButtonText}>Allocate Points</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Quest Summary */}
         <View style={styles.questSummaryCard}>
-          <Text style={styles.sectionTitle}>Résumé des quêtes</Text>
+          <Text style={styles.sectionTitle}>Quest Summary</Text>
           <View style={styles.questStats}>
             <View style={[styles.questStat, { backgroundColor: '#065F46' }]}>
               <Text style={styles.questStatNumber}>{character.quests.completed}</Text>
-              <Text style={styles.questStatLabel}>Terminées</Text>
+              <Text style={styles.questStatLabel}>Completed</Text>
             </View>
             <View style={[styles.questStat, { backgroundColor: '#92400E' }]}>
               <Text style={styles.questStatNumber}>{character.quests.inProgress}</Text>
-              <Text style={styles.questStatLabel}>En cours</Text>
+              <Text style={styles.questStatLabel}>In Progress</Text>
             </View>
             <View style={[styles.questStat, { backgroundColor: '#7C2D12' }]}>
               <Text style={styles.questStatNumber}>{character.quests.failed}</Text>
-              <Text style={styles.questStatLabel}>Échouées</Text>
+              <Text style={styles.questStatLabel}>Failed</Text>
             </View>
           </View>
         </View>
@@ -272,9 +272,9 @@ export default function DashboardScreen() {
           {/* Skills */}
           <View style={styles.halfCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>Compétences</Text>
+              <Text style={styles.sectionTitle}>Skills</Text>
               <TouchableOpacity onPress={() => router.push('/(dashboard)/skills')}>
-                <Text style={styles.viewAllText}>Voir tout</Text>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
             {character.skills.length > 0 ? (
@@ -283,7 +283,7 @@ export default function DashboardScreen() {
                   <Text style={styles.skillName}>{skill.name}</Text>
                   <View style={styles.skillLevel}>
                     <Text style={styles.skillLevelText}>
-                      Niv {skill.level}/{skill.maxLevel}
+                      Lvl {skill.level}/{skill.maxLevel}
                     </Text>
                   </View>
                 </View>
@@ -291,7 +291,7 @@ export default function DashboardScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateIcon}>⚡</Text>
-                <Text style={styles.emptyStateText}>Aucune compétence</Text>
+                <Text style={styles.emptyStateText}>No skills</Text>
               </View>
             )}
           </View>
@@ -299,9 +299,9 @@ export default function DashboardScreen() {
           {/* Inventory */}
           <View style={styles.halfCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>Inventaire</Text>
+              <Text style={styles.sectionTitle}>Inventory</Text>
               <TouchableOpacity onPress={() => router.push('/(dashboard)/inventory')}>
-                <Text style={styles.viewAllText}>Voir tout</Text>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
             {character.inventory.length > 0 ? (
@@ -321,7 +321,7 @@ export default function DashboardScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateIcon}>🎒</Text>
-                <Text style={styles.emptyStateText}>Inventaire vide</Text>
+                <Text style={styles.emptyStateText}>Empty inventory</Text>
               </View>
             )}
           </View>
@@ -384,6 +384,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    marginTop: 30,
   },
   welcomeText: {
     fontSize: 18,

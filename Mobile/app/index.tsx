@@ -24,7 +24,6 @@ export default function IndexPage() {
           console.log('⚠️ User authenticated but no character, redirecting to character creation');
           router.replace('/(dashboard)/character-create');
         } else {
-          // hasCharacter est null, on laisse le dashboard gérer
           console.log('🤔 User authenticated, hasCharacter unknown, going to dashboard');
           router.replace('/(dashboard)');
         }
@@ -35,7 +34,7 @@ export default function IndexPage() {
     }
   }, [isAuthenticated, isLoading, user, hasCharacter]);
 
-  // Interface de debug temporaire - SUPPRIMER EN PRODUCTION
+  // Temporary debug UI - REMOVE IN PRODUCTION
   if (isAuthenticated && user) {
     return (
       <View style={{ 
@@ -46,13 +45,13 @@ export default function IndexPage() {
         padding: 20,
       }}>
         <Text style={{ color: Colors.textPrimary, fontSize: 18, marginBottom: 20, textAlign: 'center' }}>
-          Debug Mode - Utilisateur connecté
+          Debug Mode - User logged in
         </Text>
         <Text style={{ color: Colors.textSecondary, marginBottom: 10, textAlign: 'center' }}>
           Email: {user.email}
         </Text>
         <Text style={{ color: Colors.textSecondary, marginBottom: 20, textAlign: 'center' }}>
-          A un personnage: {hasCharacter?.toString() || 'null'}
+          Has character: {hasCharacter?.toString() || 'null'}
         </Text>
         
         <TouchableOpacity 
@@ -68,7 +67,7 @@ export default function IndexPage() {
           }}
         >
           <Text style={{ color: Colors.textPrimary, fontWeight: 'bold' }}>
-            Déconnexion complète
+            Full Logout
           </Text>
         </TouchableOpacity>
 
@@ -82,7 +81,7 @@ export default function IndexPage() {
           onPress={() => router.replace('/(dashboard)')}
         >
           <Text style={{ color: Colors.textPrimary, fontWeight: 'bold' }}>
-            Aller au dashboard
+            Go to Dashboard
           </Text>
         </TouchableOpacity>
 
@@ -95,7 +94,7 @@ export default function IndexPage() {
           onPress={() => router.replace('/(auth)/login')}
         >
           <Text style={{ color: Colors.textPrimary, fontWeight: 'bold' }}>
-            Aller au login
+            Go to Login
           </Text>
         </TouchableOpacity>
       </View>
@@ -111,7 +110,7 @@ export default function IndexPage() {
     }}>
       <LoadingSpinner 
         size="large" 
-        message="Initialisation de Solo Leveling..." 
+        message="Initializing Solo Leveling..." 
       />
     </View>
   );

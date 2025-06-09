@@ -12,7 +12,7 @@ export default function DashboardLayout() {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: 60,
+          height: 80,
           paddingBottom: 8,
           paddingTop: 8,
         },
