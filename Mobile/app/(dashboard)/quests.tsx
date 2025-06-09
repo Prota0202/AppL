@@ -293,43 +293,80 @@ export default function QuestsScreen() {
   }, [loadQuests, refreshInventory]);
 
   const handleQuestAction = async (questId: number, action: string) => {
-    try {
-      setUpdatingQuests(prev => new Set(prev).add(questId));
-      
-      const result = await apiService.updateQuest(questId, action as 'accept' | 'progress' | 'cancel');
-      
-      let successMessage = '';
-      switch (action) {
-        case 'accept':
-          successMessage = 'Quest accepted successfully!';
-          break;
-        case 'progress':
+  try {
+    setUpdatingQuests(prev => new Set(prev).add(questId));
+    
+    console.log('🎯 Quest action:', { questId, action });
+    
+    const result = await apiService.updateQuest(questId, action as 'accept' | 'progress' | 'cancel');
+    
+    console.log('✅ Quest action result:', result);
+    
+    let successMessage = '';
+    let shouldRefreshInventory = false;
+    
+    switch (action) {
+      case 'accept':
+        successMessage = 'Quest accepted successfully!';
+        break;
+      case 'progress':
+        // Vérifier si la quête a été complétée (100% de progression)
+        if (result && (result.progress >= 100 || result.status === 'COMPLETED')) {
+          successMessage = `Quest completed! 🎉\n\nRewards received:\n• ${result.reward || 'XP reward'}`;
+          shouldRefreshInventory = true;
+          console.log('🎁 Quest completed, should refresh inventory');
+        } else {
           successMessage = 'Progress updated successfully!';
-          break;
-        case 'cancel':
-          successMessage = 'Quest cancelled';
-          break;
-      }
-      
-      Alert.alert('Success!', successMessage);
-      
-      // ✅ Rafraîchir BOTH les quêtes ET l'inventaire
-      await Promise.all([
-        loadQuests(),
-        refreshInventory() // ✅ AJOUT CRUCIAL : Rafraîchir l'inventaire quand une quête est complétée
-      ]);
-      
-    } catch (error) {
-      const errorMessage = handleApiError(error);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setUpdatingQuests(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(questId);
-        return newSet;
-      });
+        }
+        break;
+      case 'cancel':
+        successMessage = 'Quest cancelled';
+        break;
     }
-  };
+    
+    Alert.alert('Success!', successMessage);
+    
+    // Rafraîchir les quêtes immédiatement
+    await loadQuests();
+    
+    // Si la quête est complétée, attendre un peu puis rafraîchir l'inventaire
+    if (shouldRefreshInventory) {
+      console.log('⏳ Waiting 2 seconds before refreshing inventory...');
+      
+      // Attendre 2 secondes pour laisser le temps au backend de traiter les récompenses
+      setTimeout(async () => {
+        console.log('🔄 Refreshing inventory after quest completion...');
+        try {
+          await refreshInventory();
+          console.log('✅ Inventory refreshed successfully');
+          
+          // Optionnel : afficher un toast pour confirmer les récompenses
+          Alert.alert(
+            'Rewards Added! 🎁', 
+            'Check your inventory for the new items!',
+            [{ text: 'Open Inventory', onPress: () => router.push('/(dashboard)/inventory') }]
+          );
+        } catch (error) {
+          console.error('❌ Failed to refresh inventory:', error);
+        }
+      }, 2000);
+    } else {
+      // Rafraîchir l'inventaire normalement pour les autres actions
+      await refreshInventory();
+    }
+    
+  } catch (error) {
+    const errorMessage = handleApiError(error);
+    Alert.alert('Error', errorMessage);
+    console.error('❌ Quest action failed:', error);
+  } finally {
+    setUpdatingQuests(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(questId);
+      return newSet;
+    });
+  }
+};
 
   const renderQuestItem = ({ item }: { item: Quest }) => (
     <QuestCard 

@@ -55,7 +55,7 @@ export default function DashboardLayout() {
         name="inventory"
         options={{
           title: 'Inventory',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="bag" size={size} color={color} />
           ),
         }}
@@ -64,12 +64,12 @@ export default function DashboardLayout() {
         name="leaderboard"
         options={{
           title: 'Ranking',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="trophy" size={size} color={color} />
           ),
         }}
       />
-      
+
       {/* Écrans cachés de la navigation */}
       <Tabs.Screen
         name="character-create"

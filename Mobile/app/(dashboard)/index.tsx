@@ -1,11 +1,24 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useDashboard } from '../../hooks/useDashboard';
 import AttributeBar from '../../src/components/character/AttributeBar';
 import LoadingSpinner from '../../src/components/common/LoadingSpinner';
 import { Colors } from '../../src/constants/colors';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { imageService } from '../../src/services/imageService';
 
 const { width } = Dimensions.get('window');
 
@@ -13,6 +26,8 @@ export default function DashboardScreen() {
   const { character, loading, error, refreshData, updateAttributes } = useDashboard();
   const { user, logout } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const [attributes, setAttributes] = useState({
     strength: 0,
     intelligence: 0,
@@ -21,7 +36,7 @@ export default function DashboardScreen() {
   });
 
   // Initialiser les attributs quand le personnage est chargé
-  React.useEffect(() => {
+  useEffect(() => {
     if (character) {
       setAttributes({
         strength: character.strength,
@@ -29,13 +44,120 @@ export default function DashboardScreen() {
         endurance: character.endurance,
         availablePoints: character.availablePoints,
       });
+      
+      // Charger la photo de profil
+      loadProfileImage();
     }
   }, [character]);
+
+  const loadProfileImage = async () => {
+    if (character) {
+      try {
+        const imageUri = await imageService.getCharacterImage(character.id);
+        setProfileImage(imageUri);
+      } catch (error) {
+        console.log('No profile image found');
+      }
+    }
+  };
+
+  const handleImagePicker = async () => {
+    if (!character) return;
+
+    Alert.alert(
+      'Choose Profile Photo',
+      'Select how you want to add your profile photo',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Camera', onPress: () => pickImage('camera') },
+        { text: 'Photo Library', onPress: () => pickImage('library') },
+      ]
+    );
+  };
+
+  const pickImage = async (source: 'camera' | 'library') => {
+    if (!character) return;
+
+    try {
+      setImageLoading(true);
+
+      // Demander les permissions
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Photo library permission is required to select photos.');
+          return;
+        }
+      }
+
+      // Lancer le picker approprié selon la source
+      const result = source === 'camera' 
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        
+        // Sauvegarder l'image
+        const savedImagePath = await imageService.saveCharacterImage(character.id, imageUri);
+        setProfileImage(savedImagePath);
+        
+        Alert.alert('Success!', 'Profile photo updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to update profile photo. Please try again.');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const removeProfileImage = async () => {
+    if (!character || !profileImage) return;
+
+    Alert.alert(
+      'Remove Profile Photo',
+      'Are you sure you want to remove your profile photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await imageService.removeCharacterImage(character.id);
+              setProfileImage(null);
+              Alert.alert('Removed', 'Profile photo removed successfully!');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove profile photo.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
       await refreshData();
+      await loadProfileImage();
     } catch (error) {
       console.error('Error refreshing:', error);
     } finally {
@@ -156,9 +278,49 @@ export default function DashboardScreen() {
       }
     >
       <View style={styles.content}>
-        {/* Header avec bouton de déconnexion */}
+        {/* Header avec photo de profil et bouton de déconnexion */}
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>Hello, {user?.name}!</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity 
+              onPress={handleImagePicker}
+              style={styles.profileImageContainer}
+              disabled={imageLoading}
+            >
+              {imageLoading ? (
+                <View style={styles.profileImagePlaceholder}>
+                  <LoadingSpinner size="small" showMessage={false} />
+                </View>
+              ) : profileImage ? (
+                <>
+                  <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                  <View style={styles.editImageButton}>
+                    <Ionicons name="camera" size={12} color={Colors.textPrimary} />
+                  </View>
+                </>
+              ) : (
+                <View style={[styles.profileImagePlaceholder, { backgroundColor: classColors.bg }]}>
+                  <Ionicons name="camera" size={20} color={classColors.text} />
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            {profileImage && (
+              <TouchableOpacity 
+                onPress={removeProfileImage}
+                style={styles.removeImageButton}
+              >
+                <Ionicons name="trash" size={16} color={Colors.error} />
+              </TouchableOpacity>
+            )}
+            
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeText}>Hello, {user?.name}!</Text>
+              <Text style={styles.welcomeSubtext}>
+                Level {character.level} {getClassDisplayName(character.class)}
+              </Text>
+            </View>
+          </View>
+          
           <TouchableOpacity onPress={handleLogout} style={styles.logoutHeaderButton}>
             <Text style={styles.logoutHeaderText}>Logout</Text>
           </TouchableOpacity>
@@ -386,10 +548,69 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 30,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: Colors.primary,
+  },
+  profileImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+  },
+  editImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -5,
+    left: 45,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
+  welcomeContainer: {
+    flex: 1,
+  },
   welcomeText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.textPrimary,
+  },
+  welcomeSubtext: {
+    fontSize: 14,
+    color: Colors.textMuted,
   },
   logoutHeaderButton: {
     backgroundColor: Colors.error,
