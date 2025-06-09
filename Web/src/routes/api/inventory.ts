@@ -7,7 +7,7 @@ import { authenticateRequest } from "~/lib/jwt-auth";
 
 export async function GET({ request }: APIEvent) {
   try {
-    
+    // Essayer d'abord l'authentification JWT (mobile)
     try {
       const user = await authenticateRequest(request);
       console.log('✅ Mobile JWT auth successful for inventory:', user.email);

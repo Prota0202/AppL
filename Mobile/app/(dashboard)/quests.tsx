@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert, Animated, Dimensions, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInventory } from '../../hooks/useDashboard'; // Import du hook d'inventaire
 import LoadingSpinner from '../../src/components/common/LoadingSpinner';
 import { Colors } from '../../src/constants/colors';
 import { apiService, handleApiError } from '../../src/services/apiService';
@@ -244,6 +245,9 @@ export default function QuestsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [updatingQuests, setUpdatingQuests] = useState<Set<number>>(new Set());
 
+  // ✅ Ajout du hook d'inventaire
+  const { refreshInventory } = useInventory();
+
   const questTabs = [
     { label: 'Available', value: 'AVAILABLE' as QuestStatus },
     { label: 'In Progress', value: 'IN_PROGRESS' as QuestStatus },
@@ -277,13 +281,16 @@ export default function QuestsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadQuests();
+      await Promise.all([
+        loadQuests(),
+        refreshInventory() // ✅ Rafraîchir aussi l'inventaire lors du pull-to-refresh
+      ]);
     } catch (error) {
       console.error('Error refreshing quests:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [loadQuests]);
+  }, [loadQuests, refreshInventory]);
 
   const handleQuestAction = async (questId: number, action: string) => {
     try {
@@ -306,8 +313,12 @@ export default function QuestsScreen() {
       
       Alert.alert('Success!', successMessage);
       
-      // Reload quests after successful action
-      await loadQuests();
+      // ✅ Rafraîchir BOTH les quêtes ET l'inventaire
+      await Promise.all([
+        loadQuests(),
+        refreshInventory() // ✅ AJOUT CRUCIAL : Rafraîchir l'inventaire quand une quête est complétée
+      ]);
+      
     } catch (error) {
       const errorMessage = handleApiError(error);
       Alert.alert('Error', errorMessage);

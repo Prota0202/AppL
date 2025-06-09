@@ -251,12 +251,29 @@ export default function QuestCreateScreen() {
 
     try {
       setLoading(true);
+      
+      // 🐛 DEBUG: Afficher l'état des récompenses avant filtrage
+      console.log('🔍 Raw rewards state:', rewards);
 
       const validRewards = rewards.filter(r => r.itemName.trim()).map(r => ({
         itemName: r.itemName,
         description: r.description,
         quantity: r.quantity,
       }));
+
+      // 🐛 DEBUG: Afficher les récompenses après filtrage
+      console.log('🔍 Valid rewards after filter:', validRewards);
+      console.log('🔍 Filtered out rewards:', rewards.filter(r => !r.itemName.trim()));
+
+      const questPayload = {
+      title: questData.title.trim(),
+      description: questData.description.trim(),
+      difficulty: questData.difficulty,
+      rewards: validRewards,
+    };
+
+      // 🐛 DEBUG: Afficher le payload final
+      console.log('🔍 Final quest payload:', questPayload); 
 
       await apiService.createQuest({
         title: questData.title.trim(),

@@ -227,6 +227,7 @@ export const useSkills = () => {
   };
 };
 
+
 // Hook pour l'inventaire
 export const useInventory = () => {
   const [items, setItems] = useState<any[]>([]);
